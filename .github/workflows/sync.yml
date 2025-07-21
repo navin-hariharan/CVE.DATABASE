@@ -1,0 +1,54 @@
+name: Sync CVE-DATABASE
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'   # Every 5 minutes
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      REPO_ONE: https://github.com/CVEProject/cvelistV5.git
+      REPO_TWO: https://github.com/fkie-cad/nvd-json-data-feeds.git
+      REPO_ONE_DIR: cvelistV5
+      REPO_TWO_DIR: nvd-json-data-feeds
+
+    steps:
+      - name: Checkout target repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT }}
+      
+      - name: Set up git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Remove old synced content
+        run: |
+          rm -rf $REPO_ONE_DIR $REPO_TWO_DIR
+
+      - name: Clone Repo 1 (cvelistV5)
+        run: |
+          git clone --depth=1 $REPO_ONE $REPO_ONE_DIR
+
+      - name: Clone Repo 2 (nvd-json-data-feeds)
+        run: |
+          git clone --depth=1 $REPO_TWO $REPO_TWO_DIR
+
+      - name: Clean unneeded Git folders from synced content
+        run: |
+          mv $REPO_ONE_DIR/cves/* $REPO_ONE_DIR/
+          rm -rf $REPO_ONE_DIR/cves $REPO_ONE_DIR/deltaLog.json $REPO_ONE_DIR/delta.json $REPO_ONE_DIR/.git $REPO_TWO_DIR/.git $REPO_ONE_DIR/.github $REPO_TWO_DIR/.github $REPO_ONE_DIR/.gitattributes $REPO_ONE_DIR/.gitignore $REPO_ONE_DIR/README.md
+          rm -rf $REPO_TWO_DIR/LICENSES $REPO_TWO_DIR/_scripts $REPO_TWO_DIR/README.md $REPO_TWO_DIR/_state.csv
+      
+      - name: Commit & push changes
+        run: |
+          git add .
+          DATE_STR=$(date '+%Y-%m-%d %H:%M:%S %Z')
+          git diff-index --quiet HEAD || git commit -am "Sync: $DATE_STR"
+          git push
+        env:
+          GIT_AUTHOR_NAME: "github-actions[bot]"
+          GIT_AUTHOR_EMAIL: "41898282+github-actions[bot]@users.noreply.github.com"

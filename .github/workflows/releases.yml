@@ -1,0 +1,40 @@
+name: CVE-DATABASE Releases
+
+on:
+  schedule:
+    - cron: '0 0 * * *'    # Runs every day at 00:00 UTC
+  workflow_dispatch:
+
+jobs:
+  zip-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set Variables
+        id: vars
+        run: |
+          echo "date=$(date -u +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          echo "tag_name=auto-zip-$(date -u +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Zip cvelistV5
+        run: |
+          zip -r cvelistV5.zip cvelistV5
+
+      - name: Zip nvd-json-data-feeds
+        run: |
+          zip -r nvd-json-data-feeds.zip nvd-json-data-feeds
+
+      - name: Create GitHub Release with 2 ZIPs
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.tag_name }}
+          name: "Automated ZIP Release ${{ steps.vars.outputs.date }}"
+          body: "Daily ZIP releases of 'cvelistV5' and 'nvd-json-data-feeds' folders."
+          files: |
+            cvelistV5.zip
+            nvd-json-data-feeds.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
